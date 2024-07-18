@@ -9,38 +9,35 @@ const client = new pg.Client({
 
 client.connect();
 
-console.log("routes.js ran");
-
 const setupRoutes = (app) => {
-    app.get("/quotes", async (req, res) => {
-        const dbResult = await client.query("select * from tv_quotes");
 
-        res.json(dbResult.rows);
+app.get('/timezones', async (req, res) => {
+    const dbResult = await client.query('SELECT * FROM global_time_zones');
+    res.json(dbResult.rows);
+    });
+    
+    app.post('/timezones', async (req, res) => {
+    const newTimeZone = req.body;
+
+    const safeTimeZone = {
+        city: newTimeZone.city,
+        "utc_offset": newTimeZone.utc_offset
+    }
+
+    const dbResult = await client.query(
+        "INSERT INTO global_time_zones (city, utc_offset) VALUES ($1, $2)' RETURNING *", [safeTimeZone.city, safeTimeZone.utc_offset]
+    );
+    
+    if (dbResult.rowCount !== 1) {
+        res.status(500).json({
+            error: "error occured. There are more than 1 row",
+        });
+        return;
+    }
+    res.json(dbResult.rows[0]);
     });
 
-    app.post("/quotes", async (req, res) => {
-        console.log("bukola say POST /quote");
-        const newQuote = req.body;
+}
 
-        const safeQuote = {
-            text: newQuote.text,
-            author: newQuote.author,
-            showName: newQuote.showName,
-        };
 
-        const dbResult = await client.query(
-            "INSERT INTO tv_quotes (text, author, showName) VALUES ($1, $2, $3) RETURNING *",
-            [safeQuote.text, safeQuote.author, safeQuote.showName]
-        );
-
-        if (dbResult.rowCount !== 1) {
-            res.status(500).json({
-                error: "error occured. There are more than 1 row",
-            });
-            return;
-        }
-        res.json(dbResult.rows[0]);
-    });
-};
-
-export { setupRoutes };
+export {setupRoutes}
